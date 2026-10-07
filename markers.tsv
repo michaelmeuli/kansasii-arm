@@ -1,0 +1,54 @@
+#drug	gene	kind	marker	position	numbering_ref	evidence_species	evidence	notes	doi
+rifampin	rpoB	codon	S450L_Mtb / S531L_Ecoli	450	MTB_RPOB_PROT	M. kansasii	VALIDATED	Reported as S454L in the Shanghai WGS study; RIF MIC >8, RFB MIC 8	10.1016/j.cmi.2022.10.002
+rifampin	rpoB	codon	codon 531 (E. coli)	450	MTB_RPOB_PROT	M. kansasii	VALIDATED	Missense; MIC >256 by Etest; 4/5 also rifabutin-R	10.1128/AAC.45.11.3056-3058.2001
+rifampin	rpoB	codon	codon 526 (E. coli)	445	MTB_RPOB_PROT	M. kansasii	VALIDATED	Same study	10.1128/AAC.45.11.3056-3058.2001
+rifampin	rpoB	codon	codon 513 (E. coli)	432	MTB_RPOB_PROT	M. kansasii	VALIDATED	Seen in two independent M. kansasii studies	10.1128/AAC.45.11.3056-3058.2001
+rifampin	rpoB	codon	codon 516 (E. coli)	435	MTB_RPOB_PROT	M. kansasii	VALIDATED	3 RIF-R of 314 isolates (PMID 16910599)	NA
+rifampin	rpoB	region	RRDR scan window	426-452	MTB_RPOB_PROT	all mycobacteria	REGION	Report ANY non-synonymous change in this window	10.1016/j.cmi.2016.09.006
+rifabutin	rpoB	region	RRDR scan window	426-452	MTB_RPOB_PROT	M. kansasii	VALIDATED	Cross-resistance tracks rpoB; CLSI tests RFB only if RIF-R	10.1128/AAC.45.11.3056-3058.2001
+clarithromycin	rrl	nt	A2058G	2058	ECOLI_23S_NT	M. abscessus,MAC,M. chelonae	VALIDATED_OTHER_NTM	Canonical acquired macrolide resistance	10.1128/JCM.01714-15
+clarithromycin	rrl	nt	A2058C	2058	ECOLI_23S_NT	M. abscessus,MAC	VALIDATED_OTHER_NTM		10.1128/JCM.01714-15
+clarithromycin	rrl	nt	A2058T	2058	ECOLI_23S_NT	NTM	VALIDATED_OTHER_NTM		10.1093/jac/dkx021
+clarithromycin	rrl	nt	A2059G	2059	ECOLI_23S_NT	M. abscessus,MAC	VALIDATED_OTHER_NTM		10.1128/JCM.01714-15
+clarithromycin	rrl	nt	A2059C	2059	ECOLI_23S_NT	NTM	VALIDATED_OTHER_NTM		10.1093/jac/dkx021
+clarithromycin	rrl	nt	A2057C	2057	ECOLI_23S_NT	NTM	VALIDATED_OTHER_NTM		10.1093/jac/dkx021
+clarithromycin	rrl	nt	A2266C (study coords)	NA	NONE	M. kansasii	VALIDATED_N1	Only mutation in the one CLR-R isolate of 85; resolve coordinate by aligning to the paper's amplicon	10.1128/AAC.01788-17
+clarithromycin	rrl	region	peptidyl transferase domain V	2030-2100	ECOLI_23S_NT	all	REGION	Scan window	10.1093/jac/dkx021
+clarithromycin	rrl	nt	MABC species polymorphisms G2191A,T2221C	NA	NONE	M. abscessus	DO_NOT_CALL	Species markers, not resistance	10.3967/bes2018.037
+clarithromycin	rrl	nt	MAC polymorphisms G2140A,G2210C,C2217G,T2238C,T2322C,T2404C,A2406G	NA	NONE	MAC	DO_NOT_CALL	Species markers, not resistance	10.3967/bes2018.037
+clarithromycin	erm	presence	erm homolog present/full-length	NA	NONE	M. abscessus	VALIDATED_OTHER_SPECIES	Presence/absence call, not a SNP. No erm described in M. kansasii	10.1128/jcm.00841-25
+clarithromycin	erm	codon	erm(41) T28C	28	NONE	M. abscessus	VALIDATED_OTHER_SPECIES	Loss of inducible resistance; truncation same effect	10.1186/s12879-020-05686-0
+amikacin	rrs	nt	A1408G	1408	ECOLI_16S_NT	M. abscessus,MAC,M. chelonae	VALIDATED_OTHER_NTM	= 1375A>G in M. abscessus coords. Best-supported NTM aminoglycoside marker	10.1093/jac/dkx021
+amikacin	rrs	region	helix 44 scan window	1400-1480	ECOLI_16S_NT	NTM	REGION	Window used by the commercial NTM-DR assay	10.1093/jac/dkx021
+amikacin	eis	expression	eis/eis2 present or overexpressed	NA	NONE	M. abscessus	VALIDATED_OTHER_SPECIES	Blunts bactericidal activity; needs RNA or promoter analysis	10.1128/AAC.01510-21
+amikacin	whiB7	lof	loss/gain of function; 5' uORF variants	NA	NONE	M. abscessus,M. tuberculosis	VALIDATED_OTHER_SPECIES	Master regulator; include upstream region	10.1016/j.chembiol.2023.12.020
+streptomycin	rpsL	codon	K43R	43	MTB_RPSL_PROT	M. tuberculosis	VALIDATED_OTHER_SPECIES	Most frequent STR marker; 11/15 STR-R isolates	10.1007/s00284-022-03043-9
+streptomycin	rpsL	codon	K88R	88	MTB_RPSL_PROT	M. tuberculosis	VALIDATED_OTHER_SPECIES	Second canonical rpsL site	NA
+streptomycin	rrs	nt	530 loop (positions 903-906)	903-906	ECOLI_16S_NT	M. tuberculosis	VALIDATED_OTHER_SPECIES	Classic STR cluster I	NA
+streptomycin	rrs	nt	A514C	514	ECOLI_16S_NT	M. tuberculosis	VALIDATED_OTHER_SPECIES	Most prevalent rrs change in a 302-isolate Hebei series (PMID 31934102)	NA
+streptomycin	rrs	nt	positions 512,513,516	512-516	ECOLI_16S_NT	M. tuberculosis	VALIDATED_OTHER_SPECIES	STR cluster I	NA
+streptomycin	rrs	nt	1401/1402 cluster II	1401-1402	ECOLI_16S_NT	M. tuberculosis	VALIDATED_OTHER_SPECIES	Overlaps the amikacin helix 44 window - interpret jointly	NA
+streptomycin	rrs	nt	A128G (study coords)	NA	NONE	M. kansasii	SUGGESTIVE_N1	Only change in the single isolate with STR MIC >64; not functionally confirmed	10.1128/AAC.01788-17
+streptomycin	gid	lof	any frameshift / nonsense / truncation	NA	MTB_GIDB_PROT	M. tuberculosis	VALIDATED_OTHER_SPECIES	Low-level STR resistance; loss-of-function matters more than specific codons	10.1007/s00284-022-03043-9
+streptomycin	gid	codon	E92D	92	MTB_GIDB_PROT	M. tuberculosis	VALIDATED_OTHER_SPECIES	Common; frequently a lineage marker - check phylogenetic background	10.1007/s00284-022-03043-9
+streptomycin	gid	codon	A20P	20	MTB_GIDB_PROT	M. tuberculosis	VALIDATED_OTHER_SPECIES		10.1007/s00284-022-03043-9
+streptomycin	gid	codon	A205A (synonymous)	205	MTB_GIDB_PROT	M. tuberculosis	DO_NOT_CALL	Synonymous lineage marker, co-occurs with E92D in Beijing strains	NA
+streptomycin	whiB7	lof	loss/gain of function	NA	NONE	M. tuberculosis	SCREENED_NEGATIVE	Screened but no mutations found in one STR-R series	10.1007/s00284-022-03043-9
+ciprofloxacin	gyrA	codon	D95G	95	MAV_GYRA_PROT	M. avium	VALIDATED_OTHER_NTM	Confirmed by FQ-inhibited supercoiling assay; = Mtb D94G	10.1128/spectrum.05088-22
+ciprofloxacin	gyrA	codon	D95Y	95	MAV_GYRA_PROT	M. avium	VALIDATED_OTHER_NTM	Strongest effect, IC50 15-36x WT	10.1128/spectrum.05088-22
+ciprofloxacin	gyrA	codon	D95A	95	MAV_GYRA_PROT	M. avium	VALIDATED_OTHER_NTM		10.1128/spectrum.05088-22
+ciprofloxacin	gyrA	codon	A91V	91	MAV_GYRA_PROT	M. avium	VALIDATED_OTHER_NTM	= Mtb A90V	10.1128/spectrum.05088-22
+moxifloxacin	gyrA	region	QRDR scan window	85-100	MAV_GYRA_PROT	all	REGION		10.1128/spectrum.05088-22
+moxifloxacin	gyrB	codon	codon 389	389	MTB_GYRB_PROT	M. simiae	SUGGESTIVE	Non-synonymous; higher MIC than non-mutant resistant isolates	10.1371/journal.pone.0267320
+moxifloxacin	gyrB	codon	codon 444	444	MTB_GYRB_PROT	M. simiae	SUGGESTIVE		10.1371/journal.pone.0267320
+moxifloxacin	gyrB	codon	codon 571	571	MTB_GYRB_PROT	M. simiae	SUGGESTIVE		10.1371/journal.pone.0267320
+ciprofloxacin	gyrA	codon	MAC GyrA Thr96 / GyrB Thr522	NA	NONE	MAC	DO_NOT_CALL	Present irrespective of susceptibility	10.1016/j.jiac.2019.05.028
+ciprofloxacin	gyrA	codon	MABC GyrA S83A, GyrB K447R, GyrB S464N	NA	NONE	M. abscessus	DO_NOT_CALL	In 100% of isolates regardless of phenotype (PMID 26703016)	NA
+ciprofloxacin	gyrA	none	NO mutation in 17 CIP-R M. kansasii	NA	NONE	M. kansasii	NEGATIVE_FINDING	Expect low sensitivity for FQ genotyping in this species; suspect efflux	10.1128/AAC.01788-17
+linezolid	rplC	codon	C154R	154	MTB_RPLC_PROT	M. tuberculosis	VALIDATED_OTHER_SPECIES	Canonical oxazolidinone marker	10.1128/AAC.01296-17
+linezolid	rplD	codon	R126H	126	MTB_RPLD_PROT	M. tuberculosis	VALIDATED_OTHER_SPECIES	LZD MIC >16 but delpazolid-susceptible	10.1128/AAC.00165-18
+linezolid	rrl	region	domain V	2030-2100	ECOLI_23S_NT	M. tuberculosis	VALIDATED_OTHER_SPECIES	Cross-resistance to sutezolid; fitness cost	10.1128/AAC.01296-17
+linezolid	rplC	none	no correlation in RGM	NA	NONE	rapidly growing mycobacteria	NEGATIVE_FINDING	rplC/rplD/rrl did not explain oxazolidinone MICs in RGM	10.1016/j.ijid.2021.06.055
+doxycycline	NA	none	NO VALIDATED MARKER	NA	NONE	M. kansasii	GAP	96% pooled resistance, no characterised mechanism. Use whiB7/tap as hypothesis-generating only	NA
+sulfamethoxazole-trimethoprim	NA	none	NO VALIDATED MARKER	NA	NONE	M. kansasii	GAP	49% pooled resistance; no folP/dfrA/sul determinants published for mycobacteria	NA
+all	nucS	lof	loss of function	NA	NONE	M. abscessus	HYPERMUTATOR	10-22x higher resistance mutation rate; risk flag, not a resistance call	10.1128/spectrum.02228-22
