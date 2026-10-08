@@ -67,6 +67,15 @@ wild type, so for substitution markers named like `K43R` read `aa_call` (MUT / w
 relative to the marker's own wild-type and mutant residue) and `ref_aa_check` (does the
 reference carry wt, mut, or neither - `neither` means the position transfer is suspect).
 
+**Sample/gene QC.** A call is only trusted when the sample is a non-contaminated member of the
+*M. kansasii* complex (`species` and `contamination_flag` from `output/screening_map_results.csv`,
+override with `--sample-meta`) and the gene was extracted with >= `--min-ident` (default 80) % BLAST
+identity (a floor against wrong-gene hits; the species check does the real work) and >= `--min-cov` (default 0.9, `gyrA` 0.6 because most samples lack the
+reference's ~1.26 kb insertion; override with `--min-cov-gene GENE=FRAC`) coverage of the reference gene. Otherwise the `qc` column says why
+(`contaminated`, `non_complex(<species>)`, `low_identity(<pct>)`, `partial(<cov>)`, `no_hit`), `differs` is
+`NOCALL` and `aa_call` is empty. `marker_calls.pass.tsv` contains only the rows with `qc == ok`; use it for
+analysis. Without the metadata file only the identity/coverage checks run.
+
 ## Coordinate transfer — the thing to understand
 
 Almost nothing in `markers.tsv` is in *M. kansasii* coordinates:

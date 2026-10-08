@@ -19,6 +19,12 @@ residues. So for each marker this script:
 Markers with numbering_ref = NONE are reported but not placed; they need manual
 curation against the original paper's amplicon.
 
+Sample/gene QC: a call is only trusted when the sample is a non-contaminated member of the
+M. kansasii complex (species + contamination_flag from screening_map_results.csv) AND the
+gene was extracted with >= --min-ident % BLAST identity and >= --min-cov coverage of the
+reference gene. Otherwise the `qc` column says why, `differs` is NOCALL and aa_call is empty.
+marker_calls.pass.tsv holds only the rows with qc == ok.
+
 Usage:
   python3 05_annotate.py            # defaults: $KANSASII_ROOT/output/arm/{refs,work}
   python3 05_annotate.py --aln-dir DIR --refs DIR --markers markers.tsv \
@@ -40,6 +46,8 @@ from typing import Any
 ROOT = Path(os.environ.get("KANSASII_ROOT", "/shares/sander.imm.uzh/MM/kansasii"))
 ARM = Path(os.environ.get("ARM_DIR", ROOT / "output" / "arm"))
 HERE = Path(__file__).resolve().parent
+
+COMPLEX = {"kansasii", "persicum", "pseudokansasii", "innocens", "attenuatum", "ostraviense", "gastri"}
 
 CODONS: dict[str, str] = {}
 _B, _AA = "TCAG", "FFLLSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG"
@@ -126,6 +134,50 @@ def ungapped_to_column(aligned_seq: str) -> dict[int, int]:
     return m
 
 
+def load_meta(path: str) -> dict[str, tuple[str, str]]:
+    """sample id -> (species, contamination_flag) from screening_map_results.csv."""
+    out: dict[str, tuple[str, str]] = {}
+    if not os.path.exists(path):
+        print(f"[warn] no sample metadata at {path}: species/contamination QC skipped", file=sys.stderr)
+        return out
+    with open(path, encoding="utf-8", newline="") as fh:
+        for row in csv.DictReader(fh):
+            out[row["PROBENNUMMER"]] = (row.get("species", "").strip(), row.get("contamination_flag", "").strip())
+    return out
+
+
+def load_hit(samples_dir: str, sample: str, tag: str) -> tuple[float, float] | None:
+    """(percent identity, fraction of the reference gene covered) of the extracted gene, or None."""
+    path = os.path.join(samples_dir, sample, "blast", f"{tag}.hit")
+    if not os.path.exists(path) or os.path.getsize(path) == 0:
+        return None
+    with open(path, encoding="utf-8") as fh:
+        f = fh.readline().split()
+    return float(f[3]), float(f[4]) / float(f[5])
+
+
+def sample_qc(sample: str, tag: str, meta: dict[str, tuple[str, str]], samples_dir: str,
+              min_ident: float, min_cov: float) -> str:
+    """'ok' or a ';'-joined list of reasons this sample/gene must not be called."""
+    why: list[str] = []
+    species, contam = meta.get(sample, ("", ""))
+    if contam:
+        why.append("contaminated")
+    if species and species not in COMPLEX:
+        why.append(f"non_complex({species})")
+    hit = load_hit(samples_dir, sample, tag)
+    if hit is None:
+        if os.path.isdir(os.path.join(samples_dir, sample)):
+            why.append("no_hit")
+    else:
+        pid, cov = hit
+        if pid < min_ident:
+            why.append(f"low_identity({pid:.1f})")
+        if cov < min_cov:
+            why.append(f"partial({cov:.0%})")
+    return ";".join(why) or "ok"
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--aln-dir", default=str(ARM / "work" / "aln"))
@@ -133,9 +185,26 @@ def main() -> None:
     ap.add_argument("--markers", default=str(HERE / "markers.tsv"))
     ap.add_argument("--resolved", default=str(ARM / "work" / "targets.resolved.tsv"))
     ap.add_argument("--outdir", default=str(ARM / "work" / "report"))
+    ap.add_argument("--samples", default=str(ARM / "work" / "samples"))
+    ap.add_argument("--sample-meta", default=str(ROOT / "output" / "screening_map_results.csv"))
+    ap.add_argument("--min-ident", type=float, default=80.0,
+                    help="minimum BLAST %% identity of the extracted gene to the reference gene "
+                         "(a floor against wrong-gene hits; species gating does the real work, and "
+                         "complex species differ a lot at e.g. gid: 88%% persicum, 80%% attenuatum)")
+    ap.add_argument("--min-cov", type=float, default=0.9,
+                    help="minimum fraction of the reference gene covered by the extracted gene")
+    ap.add_argument("--min-cov-gene", action="append", default=[], metavar="GENE=FRAC",
+                    help="per-gene override of --min-cov (repeatable); built-in: gyrA=0.6, because "
+                         "the reference gyrA carries a ~1.26 kb insertion that most samples lack")
     args = ap.parse_args()
     os.makedirs(args.outdir, exist_ok=True)
 
+    meta = load_meta(args.sample_meta)
+    cov_gene = {"gyrA": 0.6}
+    for item in args.min_cov_gene:
+        g, _, v = item.partition("=")
+        cov_gene[g] = float(v)
+    qc_cache: dict[tuple[str, str], str] = {}
     numbering: dict[str, str] = {}
     with open(args.resolved, encoding="utf-8") as fh:
         for r in csv.DictReader(fh, delimiter="\t"):
@@ -153,13 +222,23 @@ def main() -> None:
 
     calls_path = os.path.join(args.outdir, "marker_calls.tsv")
     unplaced: list[dict[str, str]] = []
-    with open(calls_path, "w", newline="", encoding="utf-8") as cf:
+    pass_path = os.path.join(args.outdir, "marker_calls.pass.tsv")
+    with open(calls_path, "w", newline="", encoding="utf-8") as cf, \
+         open(pass_path, "w", newline="", encoding="utf-8") as pf:
         cw = csv.writer(cf, delimiter="\t", lineterminator="\n")
+        pw = csv.writer(pf, delimiter="\t", lineterminator="\n")
         cw.writerow(["gene", "drug", "marker", "evidence", "numbering_ref",
                      "ext_position", "mkn_position", "aln_column",
                      "ref_state", "sample", "sample_state", "differs",
                      "ref_aa", "sample_aa", "marker_wt_aa", "marker_mut_aa",
-                     "ref_aa_check", "aa_call", "doi"])
+                     "ref_aa_check", "aa_call", "species", "contamination_flag", "hit_pident",
+                     "hit_cov", "qc", "doi"])
+        pw.writerow(["gene", "drug", "marker", "evidence", "numbering_ref",
+                     "ext_position", "mkn_position", "aln_column",
+                     "ref_state", "sample", "sample_state", "differs",
+                     "ref_aa", "sample_aa", "marker_wt_aa", "marker_mut_aa",
+                     "ref_aa_check", "aa_call", "species", "contamination_flag", "hit_pident",
+                     "hit_cov", "qc", "doi"])
 
         for aln_file in sorted(os.listdir(args.aln_dir)):
             if not aln_file.endswith((".codon.aln.fasta", ".nt.aln.fasta")):
@@ -241,7 +320,19 @@ def main() -> None:
                     s_up = s_state.upper()
                     s_aa = ""
                     aa_call = ""
-                    if "N" in s_up or "-" in s_up:
+                    sid = sname.split("__", 1)[-1]
+                    if (sid, tag) not in qc_cache:
+                        qc_cache[(sid, tag)] = sample_qc(
+                            sid, tag, meta, args.samples, args.min_ident,
+                            cov_gene.get(re.sub(r"_c\d+$", "", tag), args.min_cov))
+                    qc = qc_cache[(sid, tag)]
+                    species, contam = meta.get(sid, ("", ""))
+                    hit = load_hit(args.samples, sid, tag)
+                    if qc != "ok":
+                        # wrong species / contaminated / poorly extracted gene: whatever the
+                        # alignment shows at this column is not a trustworthy genotype
+                        differs = "NOCALL"
+                    elif "N" in s_up or "-" in s_up:
                         differs = "NOCALL"
                     elif use_aa:
                         s_aa = translate(s_up)
@@ -257,10 +348,14 @@ def main() -> None:
                             aa_call = "MUT" if s_aa == mut_aa else ("wt" if s_aa == wt_aa else "OTHER")
                     else:
                         differs = "YES" if s_up != ref_state.upper() else "no"
-                    cw.writerow([tag, m["drug"], m["marker"], m["evidence"], nref,
-                                 pos, mkn_lo, c_lo + 1, ref_state, sname, s_state,
-                                 differs, ref_aa, s_aa, wt_aa, mut_aa, ref_check, aa_call,
-                                 m["doi"]])
+                    out_row = [tag, m["drug"], m["marker"], m["evidence"], nref,
+                               pos, mkn_lo, c_lo + 1, ref_state, sname, s_state,
+                               differs, ref_aa, s_aa, wt_aa, mut_aa, ref_check, aa_call,
+                               species, contam, f"{hit[0]:.2f}" if hit else "",
+                               f"{hit[1]:.3f}" if hit else "", qc, m["doi"]]
+                    cw.writerow(out_row)
+                    if qc == "ok":
+                        pw.writerow(out_row)
 
             # ---- Jalview features file -------------------------------------
             jf = os.path.join(args.outdir, f"{tag}.jalview_features.txt")
@@ -294,7 +389,7 @@ def main() -> None:
         for m in unplaced:
             w.writerow([m["drug"], m["gene"], m["marker"], m["evidence"], m["notes"], m["doi"]])
 
-    print(f"\ncalls:    {calls_path}")
+    print(f"\ncalls:    {calls_path}  (qc == ok only: {pass_path})")
     print(f"unplaced: {up}  <- review these by hand, they are not failures of the data")
 
 
