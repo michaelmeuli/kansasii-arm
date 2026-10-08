@@ -103,6 +103,38 @@ analysis. Without the metadata file only the identity/coverage checks run.
 Markers with `numbering_ref = NONE` cannot be placed automatically and are listed in
 `unplaced_markers.tsv` (same directory) for manual curation.
 
+## Read-mapping mode (genotyping from reads instead of assemblies)
+
+The default run extracts genes from Unicycler assemblies. A mixed culture or a non-complex
+species can give a misassembled or non-orthologous gene copy, which shows up as false
+"mutations" (this is how apparent rpoB S531/H526 changes in 035/127/129 arose). Read mapping is
+independent of the assembly, so the same 54 markers can also be genotyped from the trimmed reads:
+
+```bash
+./run_arm_bam.sh prepare                    # once: shared refs/ symlink, targets, bwa index
+sbatch submit_arm_bam.sbatch                # array, one task per sample (06_bam_sample.sh)
+sbatch --wrap '...; ./run_arm_bam.sh finish'  # after the array: 04_align + 05_annotate (needs env_arm)
+./07_compare_modes.py                       # asm vs bam
+```
+
+- `06_bam_sample.sh ID`: `bwa mem` of `runs/mkan329/assembly/results/<ID>/0_trimming/<ID>_r{1,2}.fastq.gz`
+  to `refs/reference.fna`, then `03_sample_seqs.sh bam` (depth < `MIN_DEPTH` masked to N, minority
+  alleles in `mixed_sites.tsv`). The full BAM is discarded; `bam/<ID>.targets.bam` keeps only the
+  target regions.
+- Outputs go to `$KANSASII_ROOT/output/arm_bam` (`ARM_DIR`), so `output/arm` is untouched; `refs/`
+  is shared via symlink. `marker_calls.tsv` has the same columns, except that `hit_pident` and
+  `hit_cov` are empty (no BLAST step), so only the species/contamination QC applies.
+- The consensus is built per target region. A whole-genome consensus shifts coordinates after
+  every upstream indel, so slicing it with reference coordinates gives the wrong codons.
+- `07_compare_modes.py` joins both `marker_calls.tsv` on gene x marker x sample and writes
+  `mode_comparison.tsv` and `mode_disagreements.tsv` (classes `agree`, `disagree`, `asm_only`,
+  `bam_only`, `both_nocall`; NOCALL is never a call). On the 131 Mkan329 samples: 3,550 shared
+  calls, 0 disagreements. Reads fill gaps where the assembly extraction was partial (rrl, rrs,
+  gyrA); the assembly gives rrl/rrs calls where read mapping is NOCALL (mapping to the rRNA genes
+  is not deep or unique enough).
+- Limits: reads are mapped to the ATCC 12478 reference, so divergent complex species map worse and
+  non-complex species mostly do not map; the consensus carries SNPs and small indels only.
+
 ## Coordinate transfer — the thing to understand
 
 Almost nothing in `markers.tsv` is in *M. kansasii* coordinates:
