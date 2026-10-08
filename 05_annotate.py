@@ -253,7 +253,7 @@ def main() -> None:
                             # the reference has neither the marker's wt nor mut residue, so
                             # the numbering does not fit this gene: do not make a call
                             aa_call = "UNVERIFIED"
-                        elif wt_aa and len(s_aa) == 1:
+                        elif wt_aa and wt_aa != mut_aa and len(s_aa) == 1:  # synonymous markers: no aa call
                             aa_call = "MUT" if s_aa == mut_aa else ("wt" if s_aa == wt_aa else "OTHER")
                     else:
                         differs = "YES" if s_up != ref_state.upper() else "no"
