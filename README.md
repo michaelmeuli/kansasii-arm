@@ -117,6 +117,43 @@ the external reference and walking the alignment. The `mkn_position` column in
 time you run this. The consensus numbering paper for mycobacterial rpoB is
 [10.1016/j.cmi.2016.09.006](https://doi.org/10.1016/j.cmi.2016.09.006).
 
+### `numbering_ref` values
+
+`numbering_ref` names the external sequence a marker's `position` is counted in.
+`01_fetch_reference.sh` downloads each one from NCBI into `$ARM_DIR/refs` as `<name>.fa`.
+`MTB_GIDB_PROT`, for example, is *M. tuberculosis* H37Rv GidB (RsmG, Rv3919c,
+`NP_218436.1`), so gid E92D means residue 92 of that protein.
+
+| `numbering_ref` | Source | Used for |
+|---|---|---|
+| `MTB_RPOB_PROT`, `MTB_GYRB_PROT`, `MTB_RPSL_PROT`, `MTB_GIDB_PROT`, `MTB_RPLC_PROT`, `MTB_RPLD_PROT` | Mtb H37Rv proteins (RefSeq `NP_…`) | rpoB, gyrB, rpsL, gid, rplC, rplD |
+| `MAV_GYRA_PROT` | *M. avium* GyrA (`WP_011723278.1`) | gyrA D95/A91 fluoroquinolone numbering |
+| `ECOLI_16S_NT`, `ECOLI_23S_NT` | *E. coli* K-12 rRNA (`J01695.2` 1268..2809, `V00331.1`) | rrs, rrl |
+| `NONE` | no transfer | region scans, negative findings, study-specific coordinates |
+
+### Evidence levels
+
+The `evidence` column in `markers.tsv` sets the Jalview colour (`COLOURS` in
+`05_annotate.py`). `evidence_species` says where the evidence was observed and `doi`
+gives the paper.
+
+| Level | Meaning |
+|---|---|
+| `VALIDATED` | Confirmed in *M. kansasii* (e.g. rpoB codons 513, 516, 526, 531). Red. |
+| `VALIDATED_OTHER_NTM` | Confirmed in other NTM, e.g. MAC or *M. abscessus* (rrl A2058G, rrs A1408G, gyrA D95G). Orange. |
+| `VALIDATED_OTHER_SPECIES` | Confirmed outside NTM, mostly Mtb (gid loss of function, E92D, R20P). Amber. |
+| `VALIDATED_N1` | Seen in *M. kansasii*, but in a single isolate (rrl A2266C). Orange. |
+| `SUGGESTIVE`, `SUGGESTIVE_N1` | Associated but not functionally confirmed (gyrB in *M. simiae*, rrs A128G in one isolate). Grey. |
+| `REGION` | A scan window, not a single marker: report any non-synonymous change (rpoB RRDR, gyrA QRDR, rrs helix 44, rrl domain V). |
+| `DO_NOT_CALL` | Known species polymorphism, not resistance (gid A205A, MAC/MABC rrl and gyr variants). Green. |
+| `NEGATIVE_FINDING` | Published evidence that a gene does not explain the phenotype (no gyrA mutations in 17 CIP-R *M. kansasii*). |
+| `GAP` | No known mechanism for the drug. |
+| `HYPERMUTATOR` | nucS loss of function: a risk flag, not a resistance call. |
+| `SCREENED_NEGATIVE` | Screened with no mutations found (whiB7). |
+
+The gid streptomycin markers are `VALIDATED_OTHER_SPECIES`: they are transferred from Mtb,
+not *M. kansasii* evidence.
+
 ## Caveats that will cost you if ignored
 
 1. **Codon-aware alignment matters.** A plain nucleotide MAFFT can open a 1 or
