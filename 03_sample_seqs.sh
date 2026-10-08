@@ -45,13 +45,19 @@ bam)
     | awk -F'\t' '{split($5,a,","); tot=a[1]+a[2]; if (tot>0 && a[2]/tot>0.10 && a[2]/tot<0.90) print $0"\tMIXED"}' \
     > "$OUT/mixed_sites.tsv" || : > "$OUT/mixed_sites.tsv"
 
-  bcftools consensus -f "$REF" -m "$OUT/lowcov.bed" -M N \
-    -H A "$OUT/calls.vcf.gz" > "$OUT/consensus.fna"
-  samtools faidx "$OUT/consensus.fna"
-
-  # Slice the gene regions out of the consensus using the same BED.
-  bedtools getfasta -fi "$OUT/consensus.fna" -bed "$BED" -s -name \
-    > "$OUT/genes.raw.fa"
+  # Build the consensus per target region: a whole-genome consensus shifts coordinates after
+  # every upstream indel, so slicing it with the reference BED would cut the wrong bases.
+  : > "$OUT/genes.raw.fa"
+  while IFS=$'\t' read -r chr s e name _ strand; do
+    reg="$chr:$((s+1))-$e"
+    samtools faidx "$REF" "$reg" \
+      | bcftools consensus -m "$OUT/lowcov.bed" -M N -H A "$OUT/calls.vcf.gz" > "$OUT/frag.fa" 2>/dev/null
+    samtools faidx "$OUT/frag.fa"
+    frag=$(cut -f1 "$OUT/frag.fa.fai")
+    if [[ "$strand" == "-" ]]; then samtools faidx -i "$OUT/frag.fa" "$frag"; else samtools faidx "$OUT/frag.fa" "$frag"; fi \
+      | sed "1s|.*|>${name}::${reg}|" >> "$OUT/genes.raw.fa"
+  done < "$BED"
+  rm -f "$OUT/frag.fa" "$OUT/frag.fa.fai"
   ;;
 
 asm)

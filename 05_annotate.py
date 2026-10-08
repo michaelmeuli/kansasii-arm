@@ -167,7 +167,7 @@ def sample_qc(sample: str, tag: str, meta: dict[str, tuple[str, str]], samples_d
         why.append(f"non_complex({species})")
     hit = load_hit(samples_dir, sample, tag)
     if hit is None:
-        if os.path.isdir(os.path.join(samples_dir, sample)):
+        if os.path.isdir(os.path.join(samples_dir, sample, "blast")):   # BLAST QC exists only in asm mode
             why.append("no_hit")
     else:
         pid, cov = hit
