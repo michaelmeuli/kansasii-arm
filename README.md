@@ -76,6 +76,33 @@ reference's ~1.26 kb insertion; override with `--min-cov-gene GENE=FRAC`) covera
 `NOCALL` and `aa_call` is empty. `marker_calls.pass.tsv` contains only the rows with `qc == ok`; use it for
 analysis. Without the metadata file only the identity/coverage checks run.
 
+### `marker_calls.tsv` columns
+
+| Column | Meaning |
+|---|---|
+| `gene`, `drug` | Gene and the drug the marker is associated with |
+| `marker` | Literature mutation (wild-type aa, position, mutant aa, e.g. `E92D`) or nucleotide marker |
+| `evidence` | Support level (`VALIDATED`, `VALIDATED_OTHER_NTM`, `VALIDATED_OTHER_SPECIES`, `SUGGESTIVE`, `DO_NOT_CALL`, ...); sets the Jalview colour |
+| `numbering_ref` | External reference the marker's numbering comes from (e.g. `MTB_GIDB_PROT`) |
+| `ext_position` | Position in that external numbering |
+| `mkn_position` | Same residue in *M. kansasii* (ATCC 12478) coordinates |
+| `aln_column` | Column in the multi-sample MAFFT alignment |
+| `ref_state` | Reference codon/base at that column |
+| `sample` | `<gene>__<sample id>` |
+| `sample_state` | Sample codon/base at that column |
+| `differs` | `YES` / `SYN` / `no` / `NOCALL` (see above) |
+| `ref_aa`, `sample_aa` | Translated reference / sample residue (coding markers) |
+| `marker_wt_aa`, `marker_mut_aa` | Wild-type and mutant residue the marker expects |
+| `ref_aa_check` | Does the reference carry `wt`, `mut` or `neither` (`neither` = suspect transfer) |
+| `aa_call` | `wt` / `MUT` / `OTHER` relative to the marker's own alleles; empty if QC failed |
+| `species`, `contamination_flag` | Sample metadata from `screening_map_results.csv` |
+| `hit_pident`, `hit_cov` | BLAST identity (%) and coverage (fraction) of the extracted gene |
+| `qc` | `ok` or the reason the row is masked (see QC above) |
+| `doi` | Source paper for the marker |
+
+Markers with `numbering_ref = NONE` cannot be placed automatically and are listed in
+`unplaced_markers.tsv` (same directory) for manual curation.
+
 ## Coordinate transfer — the thing to understand
 
 Almost nothing in `markers.tsv` is in *M. kansasii* coordinates:
