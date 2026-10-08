@@ -10,7 +10,7 @@ import subprocess
 import sys
 import tempfile
 
-CODONS = {}
+CODONS: dict[str, str] = {}
 _B = "TCAG"
 _AA = "FFLLSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG"
 for i, b1 in enumerate(_B):
@@ -19,9 +19,11 @@ for i, b1 in enumerate(_B):
             CODONS[b1 + b2 + b3] = _AA[i * 16 + j * 4 + k]
 
 
-def read_fasta(path):
-    out, name, buf = [], None, []
-    for line in open(path):
+def read_fasta(path: str) -> list[tuple[str, str]]:
+    out: list[tuple[str, str]] = []
+    name: str | None = None
+    buf: list[str] = []
+    for line in open(path, encoding="utf-8"):
         if line.startswith(">"):
             if name:
                 out.append((name, "".join(buf)))
@@ -33,23 +35,23 @@ def read_fasta(path):
     return out
 
 
-def translate(nt):
+def translate(nt: str) -> str:
     nt = nt.upper().replace("-", "")
-    aa = []
+    aa: list[str] = []
     for i in range(0, len(nt) - len(nt) % 3, 3):
         aa.append(CODONS.get(nt[i:i + 3], "X"))
     return "".join(aa)
 
 
-def write_fasta(path, recs):
-    with open(path, "w") as fh:
+def write_fasta(path: str, recs: list[tuple[str, str]]) -> None:
+    with open(path, "w", encoding="utf-8") as fh:
         for n, s in recs:
             fh.write(f">{n}\n")
             for i in range(0, len(s), 70):
                 fh.write(s[i:i + 70] + "\n")
 
 
-def main():
+def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--nt", required=True)
     ap.add_argument("--out-nt", required=True)
@@ -67,14 +69,14 @@ def main():
         aa_in = tf.name
     write_fasta(aa_in, aa)
 
-    with open(a.out_aa, "w") as out:
+    with open(a.out_aa, "w", encoding="utf-8") as out:
         subprocess.run(["mafft", "--auto", "--thread", a.threads, "--preservecase", aa_in],
                        stdout=out, stderr=subprocess.DEVNULL, check=True)
 
     aligned_aa = dict(read_fasta(a.out_aa))
     ntd = {n: s.upper().replace("-", "") for n, s in nt}
 
-    back = []
+    back: list[tuple[str, str]] = []
     for n, _ in nt:
         prot, src, i, outs = aligned_aa[n], ntd[n], 0, []
         for ch in prot:

@@ -31,7 +31,7 @@ streptomycin	rrs	nt	1401/1402 cluster II	1401-1402	ECOLI_16S_NT	M. tuberculosis	
 streptomycin	rrs	nt	A128G (study coords)	NA	NONE	M. kansasii	SUGGESTIVE_N1	Only change in the single isolate with STR MIC >64; not functionally confirmed	10.1128/AAC.01788-17
 streptomycin	gid	lof	any frameshift / nonsense / truncation	NA	MTB_GIDB_PROT	M. tuberculosis	VALIDATED_OTHER_SPECIES	Low-level STR resistance; loss-of-function matters more than specific codons	10.1007/s00284-022-03043-9
 streptomycin	gid	codon	E92D	92	MTB_GIDB_PROT	M. tuberculosis	VALIDATED_OTHER_SPECIES	Common; frequently a lineage marker - check phylogenetic background	10.1007/s00284-022-03043-9
-streptomycin	gid	codon	A20P	20	MTB_GIDB_PROT	M. tuberculosis	VALIDATED_OTHER_SPECIES		10.1007/s00284-022-03043-9
+streptomycin	gid	codon	A20P	20	MTB_GIDB_PROT	M. tuberculosis	VALIDATED_OTHER_SPECIES	NUMBERING UNVERIFIED: residue 20 of Mtb GidB (NP_218436.1) is Arg, not Ala (Ala is at 19/23); possibly A80P (Mtb pos 80 = Ala). Check against the source paper before use.	10.1007/s00284-022-03043-9
 streptomycin	gid	codon	A205A (synonymous)	205	MTB_GIDB_PROT	M. tuberculosis	DO_NOT_CALL	Synonymous lineage marker, co-occurs with E92D in Beijing strains	NA
 streptomycin	whiB7	lof	loss/gain of function	NA	NONE	M. tuberculosis	SCREENED_NEGATIVE	Screened but no mutations found in one STR-R series	10.1007/s00284-022-03043-9
 ciprofloxacin	gyrA	codon	D95G	95	MAV_GYRA_PROT	M. avium	VALIDATED_OTHER_NTM	Confirmed by FQ-inhibited supercoiling assay; = Mtb D94G	10.1128/spectrum.05088-22

@@ -1,0 +1,7 @@
+# Type-checking config only (pipeline scripts, not a package).
+# Run: mypy   (from the repo root, in an env with mypy)
+[tool.mypy]
+strict = true
+python_version = "3.11"
+files = ["02_make_targets.py", "05_annotate.py", "backtranslate.py"]
+untyped_calls_exclude = ["Bio"]

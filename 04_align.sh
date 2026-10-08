@@ -8,21 +8,22 @@
 # a plain nucleotide alignment can open gaps out of frame and shift every
 # downstream codon by one or two.
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
 
 THREADS=${1:-4}
-ALN=work/aln
+ALN=$ARM/work/aln
 mkdir -p "$ALN"
 
 # Which genes are protein-coding, taken from targets.tsv feature type
-mapfile -t CODING < <(awk -F'\t' '!/^#/ && $5 ~ /CDS/ {print $1}' targets.tsv)
+mapfile -t CODING < <(awk -F'\t' '!/^#/ && $5 ~ /CDS/ {print $1}' "$HERE/targets.tsv")
 is_coding () { for g in "${CODING[@]}"; do [[ "${1%%_c[0-9]*}" == "$g" ]] && return 0; done; return 1; }
 
-for refgene in work/ref_genes/*.fa; do
+for refgene in "$ARM"/work/ref_genes/*.fa; do
   tag=$(basename "$refgene" .fa)
   in="$ALN/$tag.input.fa"
   cat "$refgene" > "$in"
   found=0
-  for s in work/samples/*/genes/"$tag".fa; do
+  for s in "$ARM"/work/samples/*/genes/"$tag".fa; do
     [[ -e "$s" ]] || continue
     cat "$s" >> "$in"; found=$((found+1))
   done
@@ -41,7 +42,7 @@ for refgene in work/ref_genes/*.fa; do
         >> "$ALN/$tag.mafft.log" 2>&1 || echo "[warn] macse failed for $tag, using nt alignment"
     else
       # translatorx-style fallback with MAFFT on the protein level
-      python3 tools/backtranslate.py --nt "$in" --threads "$THREADS" \
+      python3 "$HERE/backtranslate.py" --nt "$in" --threads "$THREADS" \
         --out-nt "$ALN/$tag.codon.aln.fasta" --out-aa "$ALN/$tag.aa.aln.fasta"
     fi
   fi

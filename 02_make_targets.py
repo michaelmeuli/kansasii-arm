@@ -14,8 +14,8 @@ Outputs (into --outdir):
   ref_genes/<gene>.fa   reference gene sequence, already strand-corrected
 
 Usage:
-  python3 02_make_targets.py --gff refs/reference.gff --fasta refs/reference.fna \
-      --targets targets.tsv --outdir work
+  python3 02_make_targets.py        # defaults: $KANSASII_ROOT/output/arm/{refs,work}
+  python3 02_make_targets.py --gff G.gff --fasta G.fna --targets targets.tsv --outdir DIR
 """
 from __future__ import annotations
 
@@ -25,7 +25,13 @@ import os
 import re
 import sys
 from collections import defaultdict
+from pathlib import Path
+from typing import Any
 from urllib.parse import unquote
+
+ROOT = Path(os.environ.get("KANSASII_ROOT", "/shares/sander.imm.uzh/MM/kansasii"))
+ARM = Path(os.environ.get("ARM_DIR", ROOT / "output" / "arm"))
+HERE = Path(__file__).resolve().parent
 
 COMP = str.maketrans("ACGTacgtNnRYKMSWByrkmswbVvDdHh", "TGCAtgcaNnYRMKSWVrymkswvBbHhDd")
 
@@ -35,8 +41,10 @@ def revcomp(s: str) -> str:
 
 
 def read_fasta(path: str) -> dict[str, str]:
-    seqs, name, buf = {}, None, []
-    with open(path) as fh:
+    seqs: dict[str, str] = {}
+    name: str | None = None
+    buf: list[str] = []
+    with open(path, encoding="utf-8") as fh:
         for line in fh:
             if line.startswith(">"):
                 if name:
@@ -50,7 +58,7 @@ def read_fasta(path: str) -> dict[str, str]:
 
 
 def parse_attrs(field: str) -> dict[str, str]:
-    out = {}
+    out: dict[str, str] = {}
     for kv in field.rstrip(";").split(";"):
         if "=" in kv:
             k, v = kv.split("=", 1)
@@ -58,9 +66,9 @@ def parse_attrs(field: str) -> dict[str, str]:
     return out
 
 
-def load_targets(path: str) -> list[dict]:
-    rows = []
-    with open(path) as fh:
+def load_targets(path: str) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    with open(path, encoding="utf-8") as fh:
         for line in fh:
             if not line.strip() or line.lstrip().startswith("#"):
                 continue
@@ -81,10 +89,10 @@ def load_targets(path: str) -> list[dict]:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--gff", required=True)
-    ap.add_argument("--fasta", required=True)
-    ap.add_argument("--targets", default="targets.tsv")
-    ap.add_argument("--outdir", default="work")
+    ap.add_argument("--gff", default=str(ARM / "refs" / "reference.gff"))
+    ap.add_argument("--fasta", default=str(ARM / "refs" / "reference.fna"))
+    ap.add_argument("--targets", default=str(HERE / "targets.tsv"))
+    ap.add_argument("--outdir", default=str(ARM / "work"))
     args = ap.parse_args()
 
     os.makedirs(os.path.join(args.outdir, "ref_genes"), exist_ok=True)
@@ -92,8 +100,8 @@ def main() -> int:
     genome = read_fasta(args.fasta)
 
     # pass 1: collect every candidate feature per target
-    hits: dict[str, list[dict]] = defaultdict(list)
-    with open(args.gff) as fh:
+    hits: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    with open(args.gff, encoding="utf-8") as fh:
         for line in fh:
             if line.startswith("#"):
                 continue
@@ -130,10 +138,10 @@ def main() -> int:
     pad_path = os.path.join(args.outdir, "targets.padded.bed")
     miss_path = os.path.join(args.outdir, "targets.missing.txt")
 
-    with open(resolved_path, "w", newline="") as rf, \
-         open(bed_path, "w") as bf, \
-         open(pad_path, "w") as pf, \
-         open(miss_path, "w") as mf:
+    with open(resolved_path, "w", newline="", encoding="utf-8") as rf, \
+         open(bed_path, "w", encoding="utf-8") as bf, \
+         open(pad_path, "w", encoding="utf-8") as pf, \
+         open(miss_path, "w", encoding="utf-8") as mf:
 
         w = csv.writer(rf, delimiter="\t", lineterminator="\n")
         w.writerow(["gene", "copy", "contig", "start_1based", "end_1based", "strand",
@@ -143,7 +151,8 @@ def main() -> int:
             gene = t["gene"]
             fs = hits.get(gene, [])
             # de-duplicate identical intervals (gene + CDS rows overlap)
-            seen, uniq = set(), []
+            seen: set[tuple[str, int, int, str]] = set()
+            uniq: list[dict[str, Any]] = []
             for h in fs:
                 key = (h["contig"], h["start"], h["end"], h["strand"])
                 if key not in seen:
@@ -176,7 +185,7 @@ def main() -> int:
                 pe = min(len(genome[h["contig"]]), h["end"] + t["pad"])
                 pf.write(f"{h['contig']}\t{ps}\t{pe}\t{tag}_pad{t['pad']}\t0\t{h['strand']}\n")
 
-                with open(os.path.join(args.outdir, "ref_genes", f"{tag}.fa"), "w") as gf:
+                with open(os.path.join(args.outdir, "ref_genes", f"{tag}.fa"), "w", encoding="utf-8") as gf:
                     gf.write(f">REF_{tag}|{h['locus_tag']}|{h['contig']}:{h['start']}-{h['end']}({h['strand']})\n")
                     for j in range(0, len(seq), 70):
                         gf.write(seq[j:j + 70] + "\n")

@@ -11,14 +11,15 @@
 #
 # Requires: samtools, bcftools (bam mode); blast+ (asm mode); seqkit optional.
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
 
 MODE=${1:?mode: bam|asm}
 SAMPLE=${2:?sample id}
 INPUT=${3:?bam or contigs fasta}
 
-REF=refs/reference.fna
-BED=work/targets.bed
-OUT=work/samples/$SAMPLE
+REF=$ARM/refs/reference.fna
+BED=$ARM/work/targets.bed
+OUT=$ARM/work/samples/$SAMPLE
 MIN_DEPTH=${MIN_DEPTH:-10}          # positions below this are masked to N
 MIN_IDENT=${MIN_IDENT:-85}          # asm mode: minimum blast identity
 mkdir -p "$OUT"
@@ -57,11 +58,25 @@ asm)
   mkdir -p "$OUT/blast"
   makeblastdb -in "$INPUT" -dbtype nucl -out "$OUT/blast/db" >/dev/null
   : > "$OUT/genes.raw.fa"
-  for g in work/ref_genes/*.fa; do
+  for g in "$ARM"/work/ref_genes/*.fa; do
     tag=$(basename "$g" .fa)
     blastn -query "$g" -db "$OUT/blast/db" -max_target_seqs 5 \
       -outfmt '6 sseqid sstart send pident length qlen bitscore' \
-      | sort -k7,7gr | head -1 > "$OUT/blast/$tag.hit"
+      | sort -k7,7gr \
+      | awk -F'\t' -v OFS='\t' '
+          # Merge split HSPs (e.g. an intein present in the reference but not in the
+          # sample splits one gene into two hits): start from the best hit, then add
+          # same-contig, same-strand hits while the merged span stays <= 1.5 x query length.
+          NR==1 { sid=$1; plus=($2<=$3); lo=($2<$3?$2:$3); hi=($2<$3?$3:$2)
+                  pid=$4; alen=$5; q=$6; bits=$7; next }
+          $1==sid && (($2<=$3)==plus) {
+            l=($2<$3?$2:$3); h=($2<$3?$3:$2)
+            nlo=(l<lo?l:lo); nhi=(h>hi?h:hi)
+            if (nhi-nlo+1 <= 1.5*q) { lo=nlo; hi=nhi; alen+=$5; bits+=$7 }
+          }
+          END { if (NR) { if (alen>q) alen=q
+                  print sid, (plus?lo:hi), (plus?hi:lo), pid, alen, q, bits } }' \
+      > "$OUT/blast/$tag.hit"
     if [[ ! -s "$OUT/blast/$tag.hit" ]]; then
       echo "[MISS] $tag: no blast hit in $SAMPLE" >&2; continue
     fi
@@ -89,11 +104,11 @@ name, buf = None, []
 def flush():
     if not name: return
     tag = re.split(r'[:\s(]', name)[0].lstrip('>')
-    with open(os.path.join(out, "genes", f"{tag}.fa"), "w") as fh:
+    with open(os.path.join(out, "genes", f"{tag}.fa"), "w", encoding="utf-8") as fh:
         fh.write(f">{tag}__{sample}\n")
         s = "".join(buf)
         for i in range(0, len(s), 70): fh.write(s[i:i+70] + "\n")
-for line in open(src):
+for line in open(src, encoding="utf-8"):
     if line.startswith(">"):
         flush(); name, buf = line.strip(), []
     else: buf.append(line.strip())

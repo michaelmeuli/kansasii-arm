@@ -3,7 +3,8 @@
 #
 # gene_aliases : comma-separated gene/Name values to match in the GFF (case-insensitive)
 # product_regex: fallback regex matched against the product= qualifier (for rRNA, which is
-#                often annotated without a gene= key). Use NONE to disable.
+#                often annotated without a gene= key). Use NONE to disable. Anchor with ^...$
+#                where the product text is a prefix of other products (e.g. L3 vs L31/L32).
 # feature_types: GFF feature types to accept, comma-separated
 # pad          : bp of flank to add on each side in the padded BED (promoters, uORFs)
 # numbering_ref: which external sequence the published marker coordinates are expressed in
@@ -15,15 +16,15 @@ rrl	clarithromycin,linezolid	rrl,rrnA-23S,23S	23S ribosomal RNA	rRNA	200	ECOLI_2
 rrs	amikacin,streptomycin	rrs,rrnA-16S,16S	16S ribosomal RNA	rRNA	200	ECOLI_16S_NT
 gyrA	ciprofloxacin,moxifloxacin	gyrA	DNA gyrase subunit A	CDS	100	MAV_GYRA_PROT
 gyrB	ciprofloxacin,moxifloxacin	gyrB	DNA gyrase subunit B	CDS	100	MTB_GYRB_PROT
-rplC	linezolid	rplC	50S ribosomal protein L3	CDS	100	MTB_RPLC_PROT
+rplC	linezolid	rplC	^50S ribosomal protein L3$	CDS	100	MTB_RPLC_PROT
 rplD	linezolid	rplD	50S ribosomal protein L4	CDS	100	MTB_RPLD_PROT
 rpsL	streptomycin	rpsL	30S ribosomal protein S12	CDS	100	MTB_RPSL_PROT
 gid	streptomycin	gid,gidB,rsmG	16S rRNA (guanine(527)-N(7))-methyltransferase|glucose-inhibited division	CDS	200	MTB_GIDB_PROT
 whiB7	intrinsic,aminoglycoside,macrolide,tetracycline	whiB7,whiB-7	transcriptional regulator WhiB7	CDS	400	NONE
 eis	amikacin,kanamycin	eis,eis2	aminoglycoside.*acetyltransferase	CDS	300	NONE
-tap	efflux,tetracycline,aminoglycoside	tap,Rv1258c	efflux	CDS	200	NONE
+tap	efflux,tetracycline,aminoglycoside	tap,Rv1258c	^multidrug efflux MFS transporter Tap$	CDS	200	NONE
 folP	sulfamethoxazole	folP,folP1	dihydropteroate synthase	CDS	100	NONE
 folC	sulfamethoxazole	folC	folylpolyglutamate synthase	CDS	100	NONE
-dfrA	trimethoprim	dfrA,folA	dihydrofolate reductase	CDS	100	NONE
-thyA	sulfamethoxazole,para-aminosalicylate	thyA	thymidylate synthase	CDS	100	NONE
+dfrA	trimethoprim	dfrA,folA	^dihydrofolate reductase$	CDS	100	NONE
+thyA	sulfamethoxazole,para-aminosalicylate	thyA	^thymidylate synthase$	CDS	100	NONE
 nucS	hypermutator	nucS,endMS	endonuclease.*NucS|mismatch.*endonuclease	CDS	100	NONE

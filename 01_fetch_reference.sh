@@ -7,11 +7,12 @@
 #   plasmid    NZ_CP006836.1    144,951 bp  (pMK12478)
 #   total 6,577,228 bp, 5,817 genes in the RefSeq GFF
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
 
 ACC=GCF_000157895.3
 ASM=ASM15789v2
 BASE=https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/157/895/${ACC}_${ASM}
-REFDIR=${1:-refs}
+REFDIR=${1:-$ARM/refs}
 
 mkdir -p "$REFDIR"
 cd "$REFDIR"
@@ -36,27 +37,34 @@ cut -f1,2 reference.fna.fai
 # Published markers are expressed in E. coli rRNA numbering or in M. tuberculosis /
 # M. avium protein numbering. 05_annotate.py transfers them onto M. kansasii by
 # alignment. Fetch them here; adjust accessions if you prefer different references.
-fetch_efetch () {  # $1=accession $2=db $3=outfile
+fetch_efetch () {  # $1=accession $2=db $3=outfile $4=optional "&seq_start=N&seq_stop=M"
   [[ -f "$3" ]] && { echo "have $3"; return; }
   echo "fetching $1 -> $3"
-  curl -fsSL "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=$2&id=$1&rettype=fasta&retmode=text" -o "$3"
+  curl -fsSL "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=$2&id=$1&rettype=fasta&retmode=text${4:-}" -o "$3"
 }
 
 # E. coli K-12 MG1655 rRNA (rrnB operon) - the source of "E. coli numbering"
-fetch_efetch "J01695.2"      nuccore ECOLI_16S_NT.fa   # contains 16S; trim to rrsB if needed
+# J01695.2 is the whole rrnB operon (7258 bp); the 16S rRNA feature is 1268..2809, so
+# fetch just that range -> positions 1..1542 are true E. coli 16S numbering.
+fetch_efetch "J01695.2"      nuccore ECOLI_16S_NT.fa "&seq_start=1268&seq_stop=2809"
 fetch_efetch "V00331.1"      nuccore ECOLI_23S_NT.fa   # 23S rRNA rrlB
 
 # M. tuberculosis H37Rv proteins (Mtb codon numbering)
 fetch_efetch "NP_215181.1"   protein MTB_RPOB_PROT.fa  # RpoB  Rv0667
-fetch_efetch "NP_215566.1"   protein MTB_GYRB_PROT.fa  # GyrB  Rv0005
-fetch_efetch "NP_216136.1"   protein MTB_RPSL_PROT.fa  # RpsL  Rv0682
-fetch_efetch "NP_218389.1"   protein MTB_GIDB_PROT.fa  # GidB  Rv3919c
-fetch_efetch "NP_215193.1"   protein MTB_RPLC_PROT.fa  # RplC  Rv0701
-fetch_efetch "NP_215194.1"   protein MTB_RPLD_PROT.fa  # RplD  Rv0702
+fetch_efetch "NP_214519"     protein MTB_GYRB_PROT.fa  # GyrB  Rv0005
+fetch_efetch "NP_215196.1"   protein MTB_RPSL_PROT.fa  # RpsL  Rv0682
+fetch_efetch "NP_218436.1"   protein MTB_GIDB_PROT.fa  # GidB (RsmG)  Rv3919c
+fetch_efetch "NP_215215.1"   protein MTB_RPLC_PROT.fa  # RplC  Rv0701
+fetch_efetch "NP_215216.1"   protein MTB_RPLD_PROT.fa  # RplD  Rv0702
 
 # M. avium GyrA - the numbering used by the D95/A91 fluoroquinolone literature
-fetch_efetch "WP_003876997.1" protein MAV_GYRA_PROT.fa
+fetch_efetch "WP_011723278.1" protein MAV_GYRA_PROT.fa
 
 echo
+echo "Fetched numbering references (check each name matches the gene):"
+for f in "$REFDIR"/*_PROT.fa "$REFDIR"/*_NT.fa; do
+  printf "  %-18s %6s  %s\n" "$(basename "$f")" "$(grep -v '>' "$f" | tr -d '\n' | wc -c)" "$(head -1 "$f" | cut -c1-80)"
+done
+echo
 echo "NOTE: verify each accession above is the protein you expect before trusting a"
-echo "      transferred codon number. Print headers with: head -1 refs/*_PROT.fa"
+echo "      transferred codon number. Print headers with: head -1 "$REFDIR"/*_PROT.fa"

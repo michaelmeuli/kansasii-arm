@@ -5,8 +5,8 @@ the designated RefSeq reference for the species.
 
 | | |
 |---|---|
-| chromosome | `NZ_CP006835.1`, 6,432,277 bp |
-| plasmid | `NZ_CP006836.1` (pMK12478), 144,951 bp |
+| chromosome | `NC_022663.1` (= NZ_CP006835.1), 6,432,277 bp |
+| plasmid | `NC_022654.1` (= NZ_CP006836.1; pMK12478), 144,951 bp |
 | total | 6,577,228 bp |
 | genes in RefSeq GFF | 5,817 |
 | genome paper | Wang et al. 2015, [10.1093/gbe/evv035](https://doi.org/10.1093/gbe/evv035) |
@@ -23,13 +23,22 @@ with the grep command to investigate.
 
 ## Run
 
-```bash
-# deps: samtools bcftools bedtools blast mafft python3  (macse optional)
-chmod +x 01_fetch_reference.sh 03_sample_seqs.sh 04_align.sh
+Paths: reference downloads and all outputs live outside the repo in
+`$KANSASII_ROOT/output/arm/{refs,work}` (default root
+`/shares/sander.imm.uzh/MM/kansasii`; override the whole dir with `ARM_DIR`).
 
+**All Mkan329 assemblies** (inputs: `runs/mkan329/assembly/results/*/1_unicycler/*.fasta`):
+
+```bash
+conda env create -f environment.yml     # once: env_arm (samtools bcftools bedtools blast mafft)
+sbatch submit_arm.sbatch                # 01 -> 02 -> 03 per new sample -> 04 -> 05
+```
+
+**Step by step** (deps: samtools bcftools bedtools blast mafft python3; macse optional):
+
+```bash
 ./01_fetch_reference.sh                       # assembly + external numbering refs
-python3 02_make_targets.py --gff refs/reference.gff --fasta refs/reference.fna \
-        --targets targets.tsv --outdir work
+python3 02_make_targets.py                    # resolve coordinates from the GFF
 
 # per sample, either mode:
 ./03_sample_seqs.sh bam  PT001 mapped/PT001.bam
@@ -39,14 +48,22 @@ python3 02_make_targets.py --gff refs/reference.gff --fasta refs/reference.fna \
 python3 05_annotate.py
 ```
 
-Then in Jalview: **File → Input Alignment** `work/aln/<gene>.codon.aln.fasta`,
-then **File → Load Features** `work/report/<gene>.jalview_features.txt`.
+Type check: `mypy` from the repo root (strict; see `pyproject.toml`).
+
+Then in Jalview: **File → Input Alignment** `$ARM_DIR/work/aln/<gene>.codon.aln.fasta`,
+then **File → Load Features** `$ARM_DIR/work/report/<gene>.jalview_features.txt`.
 Features are coloured by evidence level (red = validated in *M. kansasii*,
 orange = validated in other NTM, amber = other species, green = DO_NOT_CALL
 species polymorphisms you should expect to see and ignore).
 
-For scripted analysis use `work/report/marker_calls.tsv`, one row per
-marker × sample with `differs` = YES / no / NOCALL.
+For scripted analysis use `$ARM_DIR/work/report/marker_calls.tsv`, one row per
+marker × sample with `differs` = YES / SYN / no / NOCALL:
+coding markers are compared at the amino-acid level (YES = residue differs from the
+reference, SYN = synonymous nucleotide change only), other markers at the nucleotide level;
+NOCALL = depth-masked N or alignment gap. Reference strain ATCC 12478 is *not* always the
+wild type, so for substitution markers named like `K43R` read `aa_call` (MUT / wt / OTHER,
+relative to the marker's own wild-type and mutant residue) and `ref_aa_check` (does the
+reference carry wt, mut, or neither - `neither` means the position transfer is suspect).
 
 ## Coordinate transfer — the thing to understand
 
@@ -95,3 +112,12 @@ Targets added: `rpsL`, `gid` (gidB/rsmG), plus the streptomycin positions in
 helix-44 window — a variant there should be interpreted for both drugs. The
 only *M. kansasii*-specific observation is rrs A128G in a single isolate with
 streptomycin MIC >64 mg/L, which was never functionally confirmed.
+
+## Windows checkout
+
+- `.gitattributes` forces LF line endings, so a Windows checkout (even with
+  `core.autocrlf=true`) keeps scripts runnable. Recommended: `git config core.autocrlf false`
+  and `git config core.longpaths true`.
+- Scripts default to the cluster root `/shares/sander.imm.uzh/MM/kansasii`; set the
+  `KANSASII_ROOT` environment variable to point elsewhere (e.g. a mapped drive).
+- The shell steps and sbatch only run on the cluster (or WSL).

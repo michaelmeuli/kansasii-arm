@@ -20,8 +20,9 @@ Markers with numbering_ref = NONE are reported but not placed; they need manual
 curation against the original paper's amplicon.
 
 Usage:
-  python3 05_annotate.py --aln-dir work/aln --refs refs --markers markers.tsv \
-      --resolved work/targets.resolved.tsv --outdir work/report
+  python3 05_annotate.py            # defaults: $KANSASII_ROOT/output/arm/{refs,work}
+  python3 05_annotate.py --aln-dir DIR --refs DIR --markers markers.tsv \
+      --resolved targets.resolved.tsv --outdir DIR
 """
 from __future__ import annotations
 
@@ -33,8 +34,14 @@ import subprocess
 import sys
 import tempfile
 from collections import defaultdict
+from pathlib import Path
+from typing import Any
 
-CODONS = {}
+ROOT = Path(os.environ.get("KANSASII_ROOT", "/shares/sander.imm.uzh/MM/kansasii"))
+ARM = Path(os.environ.get("ARM_DIR", ROOT / "output" / "arm"))
+HERE = Path(__file__).resolve().parent
+
+CODONS: dict[str, str] = {}
 _B, _AA = "TCAG", "FFLLSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG"
 for i, b1 in enumerate(_B):
     for j, b2 in enumerate(_B):
@@ -57,9 +64,11 @@ COLOURS = {
 }
 
 
-def read_fasta(path):
-    out, name, buf = [], None, []
-    for line in open(path):
+def read_fasta(path: str) -> list[tuple[str, str]]:
+    out: list[tuple[str, str]] = []
+    name: str | None = None
+    buf: list[str] = []
+    for line in open(path, encoding="utf-8"):
         if line.startswith(">"):
             if name:
                 out.append((name, "".join(buf)))
@@ -71,19 +80,19 @@ def read_fasta(path):
     return out
 
 
-def translate(nt):
+def translate(nt: str) -> str:
     nt = nt.upper().replace("-", "")
     return "".join(CODONS.get(nt[i:i + 3], "X") for i in range(0, len(nt) - len(nt) % 3, 3))
 
 
-def mafft_pair(a_name, a_seq, b_name, b_seq):
+def mafft_pair(a_name: str, a_seq: str, b_name: str, b_seq: str) -> tuple[str, str]:
     """Align two sequences, return the aligned pair."""
-    with tempfile.NamedTemporaryFile("w", suffix=".fa", delete=False) as tf:
+    with tempfile.NamedTemporaryFile("w", suffix=".fa", delete=False, encoding="utf-8") as tf:
         tf.write(f">{a_name}\n{a_seq}\n>{b_name}\n{b_seq}\n")
         p = tf.name
     res = subprocess.run(["mafft", "--auto", "--quiet", "--preservecase", p],
                          capture_output=True, text=True, check=True)
-    with tempfile.NamedTemporaryFile("w", suffix=".fa", delete=False) as tf:
+    with tempfile.NamedTemporaryFile("w", suffix=".fa", delete=False, encoding="utf-8") as tf:
         tf.write(res.stdout)
         q = tf.name
     recs = dict(read_fasta(q))
@@ -92,7 +101,7 @@ def mafft_pair(a_name, a_seq, b_name, b_seq):
     return recs[a_name], recs[b_name]
 
 
-def transfer(ext_seq, mkn_seq, ext_pos):
+def transfer(ext_seq: str, mkn_seq: str, ext_pos: int) -> tuple[int | None, tuple[str | None, str | None]]:
     """External 1-based position -> M. kansasii 1-based position, or None."""
     ea, ma = mafft_pair("EXT", ext_seq, "MKN", mkn_seq)
     ei = mi = 0
@@ -106,9 +115,10 @@ def transfer(ext_seq, mkn_seq, ext_pos):
     return None, (None, None)
 
 
-def ungapped_to_column(aligned_seq):
+def ungapped_to_column(aligned_seq: str) -> dict[int, int]:
     """Map 1-based ungapped position -> 0-based alignment column."""
-    m, u = {}, 0
+    m: dict[int, int] = {}
+    u = 0
     for col, ch in enumerate(aligned_seq):
         if ch != "-":
             u += 1
@@ -116,23 +126,23 @@ def ungapped_to_column(aligned_seq):
     return m
 
 
-def main():
+def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--aln-dir", default="work/aln")
-    ap.add_argument("--refs", default="refs")
-    ap.add_argument("--markers", default="markers.tsv")
-    ap.add_argument("--resolved", default="work/targets.resolved.tsv")
-    ap.add_argument("--outdir", default="work/report")
+    ap.add_argument("--aln-dir", default=str(ARM / "work" / "aln"))
+    ap.add_argument("--refs", default=str(ARM / "refs"))
+    ap.add_argument("--markers", default=str(HERE / "markers.tsv"))
+    ap.add_argument("--resolved", default=str(ARM / "work" / "targets.resolved.tsv"))
+    ap.add_argument("--outdir", default=str(ARM / "work" / "report"))
     args = ap.parse_args()
     os.makedirs(args.outdir, exist_ok=True)
 
-    numbering = {}
-    with open(args.resolved) as fh:
+    numbering: dict[str, str] = {}
+    with open(args.resolved, encoding="utf-8") as fh:
         for r in csv.DictReader(fh, delimiter="\t"):
             numbering[r["gene"]] = r["numbering_ref"]
 
-    markers = defaultdict(list)
-    with open(args.markers) as fh:
+    markers: defaultdict[str, list[dict[str, str]]] = defaultdict(list)
+    with open(args.markers, encoding="utf-8") as fh:
         for line in fh:
             if line.startswith("#") or not line.strip():
                 continue
@@ -142,12 +152,14 @@ def main():
                  "evidence_species", "evidence", "notes", "doi"], f)))
 
     calls_path = os.path.join(args.outdir, "marker_calls.tsv")
-    unplaced = []
-    with open(calls_path, "w", newline="") as cf:
+    unplaced: list[dict[str, str]] = []
+    with open(calls_path, "w", newline="", encoding="utf-8") as cf:
         cw = csv.writer(cf, delimiter="\t", lineterminator="\n")
         cw.writerow(["gene", "drug", "marker", "evidence", "numbering_ref",
                      "ext_position", "mkn_position", "aln_column",
-                     "ref_state", "sample", "sample_state", "differs", "doi"])
+                     "ref_state", "sample", "sample_state", "differs",
+                     "ref_aa", "sample_aa", "marker_wt_aa", "marker_mut_aa",
+                     "ref_aa_check", "aa_call", "doi"])
 
         for aln_file in sorted(os.listdir(args.aln_dir)):
             if not aln_file.endswith((".codon.aln.fasta", ".nt.aln.fasta")):
@@ -168,7 +180,7 @@ def main():
             colmap = ungapped_to_column(ref_aln)
             is_cds = os.path.exists(codon)
 
-            feats = []
+            feats: list[tuple[dict[str, str], int, int, str, int]] = []
             for m in markers[gene]:
                 nref, pos = m["numbering_ref"], m["position"]
                 if nref == "NONE" or pos == "NA":
@@ -183,7 +195,8 @@ def main():
                 mkn_cmp = translate(ref_ungapped) if nref.endswith("_PROT") else ref_ungapped
 
                 lo, hi = (pos.split("-") + [pos])[:2] if "-" in pos else (pos, pos)
-                cols, mkn_lo, mkn_hi = [], None, None
+                mkn_lo: int | None = None
+                mkn_hi: int | None = None
                 for p in (int(lo), int(hi)):
                     mkn_p, (ec, mc) = transfer(ext_seq, mkn_cmp, p)
                     if mkn_p is None:
@@ -191,12 +204,12 @@ def main():
                     if mkn_lo is None:
                         mkn_lo, ref_state_ext = mkn_p, (ec, mc)
                     mkn_hi = mkn_p
-                if mkn_lo is None:
+                if mkn_lo is None or mkn_hi is None:
                     unplaced.append({**m, "notes": m["notes"] + " [no alignment anchor]"})
                     continue
 
                 # protein position -> first nt of that codon
-                def to_nt(p):
+                def to_nt(p: int) -> int:
                     return (p - 1) * 3 + 1 if nref.endswith("_PROT") else p
 
                 nt_lo, nt_hi = to_nt(mkn_lo), to_nt(mkn_hi) + (2 if nref.endswith("_PROT") else 0)
@@ -209,17 +222,49 @@ def main():
                 ref_state = ref_aln[c_lo:c_hi + 1]
                 feats.append((m, c_lo, c_hi, ref_state, mkn_lo))
 
+                # Coding markers are compared at the amino-acid level so synonymous
+                # changes (SYN) are not reported as differences.
+                use_aa = nref.endswith("_PROT") and "-" not in ref_state and len(ref_state) % 3 == 0
+                ref_aa = translate(ref_state) if use_aa else ""
+                mm = re.match(r"^([A-Z])\d+([A-Z*])(?![A-Za-z0-9])", m["marker"])
+                wt_aa, mut_aa = (mm.group(1), mm.group(2)) if mm and use_aa else ("", "")
+                # does the reference itself carry the wild-type or the mutant residue?
+                # "neither" means the position transfer is probably off.
+                ref_check = ""
+                if wt_aa and len(ref_aa) == 1:
+                    ref_check = "wt" if ref_aa == wt_aa else ("mut" if ref_aa == mut_aa else "neither")
+
                 for sname, saln in recs[1:]:
                     s_state = saln[c_lo:c_hi + 1]
-                    differs = "YES" if s_state.upper() != ref_state.upper() and "N" not in s_state.upper() else \
-                              ("NOCALL" if "N" in s_state.upper() or "-" in s_state else "no")
+                    # missing data (depth-masked N or alignment gap) must never read as
+                    # a result: decide NOCALL before comparing to the reference
+                    s_up = s_state.upper()
+                    s_aa = ""
+                    aa_call = ""
+                    if "N" in s_up or "-" in s_up:
+                        differs = "NOCALL"
+                    elif use_aa:
+                        s_aa = translate(s_up)
+                        if s_aa != ref_aa:
+                            differs = "YES"
+                        else:
+                            differs = "SYN" if s_up != ref_state.upper() else "no"
+                        if ref_check == "neither":
+                            # the reference has neither the marker's wt nor mut residue, so
+                            # the numbering does not fit this gene: do not make a call
+                            aa_call = "UNVERIFIED"
+                        elif wt_aa and len(s_aa) == 1:
+                            aa_call = "MUT" if s_aa == mut_aa else ("wt" if s_aa == wt_aa else "OTHER")
+                    else:
+                        differs = "YES" if s_up != ref_state.upper() else "no"
                     cw.writerow([tag, m["drug"], m["marker"], m["evidence"], nref,
                                  pos, mkn_lo, c_lo + 1, ref_state, sname, s_state,
-                                 differs, m["doi"]])
+                                 differs, ref_aa, s_aa, wt_aa, mut_aa, ref_check, aa_call,
+                                 m["doi"]])
 
             # ---- Jalview features file -------------------------------------
             jf = os.path.join(args.outdir, f"{tag}.jalview_features.txt")
-            with open(jf, "w") as fh:
+            with open(jf, "w", encoding="utf-8") as fh:
                 used = {m["evidence"] for m, *_ in feats}
                 for ev in sorted(used):
                     fh.write(f"{ev}\t{COLOURS.get(ev, '777777')}\n")
@@ -243,7 +288,7 @@ def main():
             print(f"[ok] {tag}: {len(feats)} markers placed -> {jf}")
 
     up = os.path.join(args.outdir, "unplaced_markers.tsv")
-    with open(up, "w", newline="") as fh:
+    with open(up, "w", newline="", encoding="utf-8") as fh:
         w = csv.writer(fh, delimiter="\t", lineterminator="\n")
         w.writerow(["drug", "gene", "marker", "evidence", "reason_or_notes", "doi"])
         for m in unplaced:
