@@ -50,7 +50,9 @@ python3 05_annotate.py
 
 Type check: `mypy` from the repo root (strict; see `pyproject.toml`).
 
-Then in Jalview: **File → Input Alignment** `$ARM_DIR/work/aln/<gene>.codon.aln.fasta`,
+Then in Jalview: **File → Input Alignment** `$ARM_DIR/work/aln/<gene>.codon.aln.fasta`
+(coding genes) or `$ARM_DIR/work/aln/<gene>.nt.aln.fasta` (non-coding genes such as
+`rrl` and `rrs`, which have no codon alignment),
 then **File → Load Features** `$ARM_DIR/work/report/<gene>.jalview_features.txt`.
 Features are coloured by evidence level (red = validated in *M. kansasii*,
 orange = validated in other NTM, amber = other species, green = DO_NOT_CALL
