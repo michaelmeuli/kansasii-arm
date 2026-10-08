@@ -92,12 +92,13 @@ analysis. Without the metadata file only the identity/coverage checks run.
 | `sample_state` | Sample codon/base at that column |
 | `differs` | `YES` / `SYN` / `no` / `NOCALL` (see above) |
 | `ref_aa`, `sample_aa` | Translated reference / sample residue (coding markers) |
-| `marker_wt_aa`, `marker_mut_aa` | Wild-type and mutant residue the marker expects |
-| `ref_aa_check` | Does the reference carry `wt`, `mut` or `neither` (`neither` = suspect transfer) |
-| `aa_call` | `wt` / `MUT` / `OTHER` relative to the marker's own alleles; empty if QC failed |
+| `marker_wt_aa`, `marker_mut_aa` | Wild-type and mutant residue (or base, for single-nucleotide markers such as rRNA `A2058G`) the marker expects |
+| `ref_aa_check` | Does the reference carry `wt`, `mut` or `neither` (`neither` = suspect transfer); also set for single-nucleotide markers. `mut` means the reference strain itself carries the mutant allele (e.g. rrs `A514C`), so `MUT` is then the species baseline, not resistance |
+| `aa_call` | `wt` / `MUT` / `OTHER` relative to the marker's own alleles (amino acid, or base for single-nucleotide markers); `OTHER` = changed, but not to the marker's mutant (`differs = YES` alone does not mean the marker mutation); empty if QC failed or for region scans |
 | `species`, `contamination_flag` | Sample metadata from `screening_map_results.csv` |
 | `hit_pident`, `hit_cov` | BLAST identity (%) and coverage (fraction) of the extracted gene |
 | `qc` | `ok` or the reason the row is masked (see QC above) |
+| `mixed` | Read-mapping mode only: 10-90 % alt-allele sites inside the marker window as `genomic_pos:ref>alt@alt_fraction` (plus-strand genomic coordinates), `;`-separated. The consensus collapses these to the majority base, so a non-empty `mixed` means heteroresistance, a mixed culture or a second gene copy; empty in assembly mode |
 | `doi` | Source paper for the marker |
 
 Markers with `numbering_ref = NONE` cannot be placed automatically and are listed in

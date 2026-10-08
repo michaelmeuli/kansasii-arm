@@ -146,6 +146,24 @@ def load_meta(path: str) -> dict[str, tuple[str, str]]:
     return out
 
 
+def load_mixed(samples_dir: str, sample: str) -> dict[int, tuple[str, str, float]]:
+    """Genomic position -> (ref, alt, alt fraction) of the 10-90 % alt-allele sites that
+    03_sample_seqs.sh (bam mode) wrote to mixed_sites.tsv; empty in asm mode."""
+    path = os.path.join(samples_dir, sample, "mixed_sites.tsv")
+    out: dict[int, tuple[str, str, float]] = {}
+    if not os.path.exists(path):
+        return out
+    with open(path, encoding="utf-8") as fh:
+        for line in fh:
+            f = line.rstrip("\n").split("\t")
+            if len(f) < 5:
+                continue
+            ref_n, alt_n = (int(x) for x in f[4].split(",")[:2])
+            if ref_n + alt_n:
+                out[int(f[1])] = (f[2], f[3], alt_n / (ref_n + alt_n))
+    return out
+
+
 def load_hit(samples_dir: str, sample: str, tag: str) -> tuple[float, float] | None:
     """(percent identity, fraction of the reference gene covered) of the extracted gene, or None."""
     path = os.path.join(samples_dir, sample, "blast", f"{tag}.hit")
@@ -206,9 +224,12 @@ def main() -> None:
         cov_gene[g] = float(v)
     qc_cache: dict[tuple[str, str], str] = {}
     numbering: dict[str, str] = {}
+    coords: dict[str, tuple[int, int, str]] = {}   # gene tag -> (start, end, strand)
+    mixed_cache: dict[str, dict[int, tuple[str, str, float]]] = {}
     with open(args.resolved, encoding="utf-8") as fh:
         for r in csv.DictReader(fh, delimiter="\t"):
             numbering[r["gene"]] = r["numbering_ref"]
+            coords[r["gene"]] = (int(r["start_1based"]), int(r["end_1based"]), r["strand"])
 
     markers: defaultdict[str, list[dict[str, str]]] = defaultdict(list)
     with open(args.markers, encoding="utf-8") as fh:
@@ -227,18 +248,14 @@ def main() -> None:
          open(pass_path, "w", newline="", encoding="utf-8") as pf:
         cw = csv.writer(cf, delimiter="\t", lineterminator="\n")
         pw = csv.writer(pf, delimiter="\t", lineterminator="\n")
-        cw.writerow(["gene", "drug", "marker", "evidence", "numbering_ref",
-                     "ext_position", "mkn_position", "aln_column",
-                     "ref_state", "sample", "sample_state", "differs",
-                     "ref_aa", "sample_aa", "marker_wt_aa", "marker_mut_aa",
-                     "ref_aa_check", "aa_call", "species", "contamination_flag", "hit_pident",
-                     "hit_cov", "qc", "doi"])
-        pw.writerow(["gene", "drug", "marker", "evidence", "numbering_ref",
-                     "ext_position", "mkn_position", "aln_column",
-                     "ref_state", "sample", "sample_state", "differs",
-                     "ref_aa", "sample_aa", "marker_wt_aa", "marker_mut_aa",
-                     "ref_aa_check", "aa_call", "species", "contamination_flag", "hit_pident",
-                     "hit_cov", "qc", "doi"])
+        header = ["gene", "drug", "marker", "evidence", "numbering_ref",
+                  "ext_position", "mkn_position", "aln_column",
+                  "ref_state", "sample", "sample_state", "differs",
+                  "ref_aa", "sample_aa", "marker_wt_aa", "marker_mut_aa",
+                  "ref_aa_check", "aa_call", "species", "contamination_flag", "hit_pident",
+                  "hit_cov", "qc", "mixed", "doi"]
+        cw.writerow(header)
+        pw.writerow(header)
 
         for aln_file in sorted(os.listdir(args.aln_dir)):
             if not aln_file.endswith((".codon.aln.fasta", ".nt.aln.fasta")):
@@ -307,11 +324,24 @@ def main() -> None:
                 ref_aa = translate(ref_state) if use_aa else ""
                 mm = re.match(r"^([A-Z])\d+([A-Z*])(?![A-Za-z0-9])", m["marker"])
                 wt_aa, mut_aa = (mm.group(1), mm.group(2)) if mm and use_aa else ("", "")
+                # single-nucleotide markers (rRNA, e.g. A2058G): same wt/MUT/OTHER logic on the base
+                nm = re.match(r"^([ACGTU])\d+([ACGTU])(?![A-Za-z0-9])", m["marker"])
+                is_nt_marker = bool(nm) and not use_aa and len(ref_state) == 1
+                if nm and is_nt_marker:
+                    wt_aa, mut_aa = nm.group(1).replace("U", "T"), nm.group(2).replace("U", "T")
                 # does the reference itself carry the wild-type or the mutant residue?
                 # "neither" means the position transfer is probably off.
                 ref_check = ""
                 if wt_aa and len(ref_aa) == 1:
                     ref_check = "wt" if ref_aa == wt_aa else ("mut" if ref_aa == mut_aa else "neither")
+                elif is_nt_marker:
+                    rb = ref_state.upper()
+                    ref_check = "wt" if rb == wt_aa else ("mut" if rb == mut_aa else "neither")
+
+                # genomic window of this marker in the reference gene, for the mixed-site lookup
+                g_start, g_end, g_strand = coords.get(tag, (0, 0, "+"))
+                g_a, g_b = ((g_start + nt_lo - 1, g_start + nt_hi - 1) if g_strand == "+"
+                            else (g_end - nt_hi + 1, g_end - nt_lo + 1))
 
                 for sname, saln in recs[1:]:
                     s_state = saln[c_lo:c_hi + 1]
@@ -348,11 +378,20 @@ def main() -> None:
                             aa_call = "MUT" if s_aa == mut_aa else ("wt" if s_aa == wt_aa else "OTHER")
                     else:
                         differs = "YES" if s_up != ref_state.upper() else "no"
+                        if is_nt_marker:
+                            if ref_check == "neither":
+                                aa_call = "UNVERIFIED"
+                            elif len(s_up) == 1:
+                                aa_call = "MUT" if s_up == mut_aa else ("wt" if s_up == wt_aa else "OTHER")
+                    if sid not in mixed_cache:
+                        mixed_cache[sid] = load_mixed(args.samples, sid)
+                    mixed = ";".join(f"{pos}:{r}>{a}@{fr:.2f}" for pos, (r, a, fr)
+                                     in sorted(mixed_cache[sid].items()) if g_a <= pos <= g_b)
                     out_row = [tag, m["drug"], m["marker"], m["evidence"], nref,
                                pos, mkn_lo, c_lo + 1, ref_state, sname, s_state,
                                differs, ref_aa, s_aa, wt_aa, mut_aa, ref_check, aa_call,
                                species, contam, f"{hit[0]:.2f}" if hit else "",
-                               f"{hit[1]:.3f}" if hit else "", qc, m["doi"]]
+                               f"{hit[1]:.3f}" if hit else "", qc, mixed, m["doi"]]
                     cw.writerow(out_row)
                     if qc == "ok":
                         pw.writerow(out_row)
