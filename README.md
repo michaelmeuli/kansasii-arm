@@ -95,6 +95,7 @@ analysis. Without the metadata file only the identity/coverage checks run.
 | `marker_wt_aa`, `marker_mut_aa` | Wild-type and mutant residue (or base, for single-nucleotide markers such as rRNA `A2058G`) the marker expects |
 | `ref_aa_check` | Does the reference carry `wt`, `mut` or `neither` (`neither` = suspect transfer); also set for single-nucleotide markers. `mut` means the reference strain itself carries the mutant allele (e.g. rrs `A514C`), so `MUT` is then the species baseline, not resistance |
 | `aa_call` | `wt` / `MUT` / `OTHER` relative to the marker's own alleles (amino acid, or base for single-nucleotide markers); `OTHER` = changed, but not to the marker's mutant (`differs = YES` alone does not mean the marker mutation); empty if QC failed or for region scans |
+| `discriminating` | `no` when `ref_aa_check = mut` (the ATCC 12478 reference carries the marker's mutant allele, e.g. rpsL `K43R`, rrs `A514C`): `MUT` then only means "same as the reference" and must not be read as predicted resistance. `yes` when the reference carries the wild-type allele; empty when the check is `neither` or unavailable |
 | `species`, `contamination_flag` | Sample metadata from `screening_map_results.csv` |
 | `hit_pident`, `hit_cov` | BLAST identity (%) and coverage (fraction) of the extracted gene |
 | `qc` | `ok` or the reason the row is masked (see QC above) |

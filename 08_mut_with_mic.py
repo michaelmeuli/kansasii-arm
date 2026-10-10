@@ -20,7 +20,7 @@ from pathlib import Path
 ROOT = Path(os.environ.get("KANSASII_ROOT", "/shares/sander.imm.uzh/MM/kansasii"))
 Row = dict[str, str]
 
-COLS = ["gene", "marker", "drug", "sample", "species", "aa_call", "ref_aa_check", "evidence",
+COLS = ["gene", "marker", "drug", "sample", "species", "aa_call", "ref_aa_check", "discriminating", "evidence",
         "mic_source", "mic_drug", "mic_value_mg_l", "mic_int_erg", "mic_matches_drug", "doi"]
 
 
@@ -57,7 +57,7 @@ def main() -> None:
                 continue
             match = int(drug.lower() == r["drug"].lower())
             rows.append([r["gene"], r["marker"], r["drug"], s, r["species"], r["aa_call"], r["ref_aa_check"],
-                         r["evidence"], src, drug, value, int_erg, str(match), r["doi"]])
+                         r["discriminating"], r["evidence"], src, drug, value, int_erg, str(match), r["doi"]])
 
     out = Path(args.out)
     with open(out, "w", encoding="utf-8", newline="") as fh:
@@ -69,9 +69,9 @@ def main() -> None:
     for gene, marker in sorted({(r["gene"], r["marker"]) for r in mut}):
         called = {sample_id(r) for r in mut if r["gene"] == gene and r["marker"] == marker}
         kept = {r[3] for r in rows if r[0] == gene and r[1] == marker}
-        str_ = {r[3] for r in rows if r[0] == gene and r[1] == marker and r[12] == "1"}
-        mhk = {r[3] for r in rows if r[0] == gene and r[1] == marker and r[8] == "MHK"}
-        mgit = {r[3] for r in rows if r[0] == gene and r[1] == marker and r[8] == "MGIT"}
+        str_ = {r[3] for r in rows if r[0] == gene and r[1] == marker and r[13] == "1"}
+        mhk = {r[3] for r in rows if r[0] == gene and r[1] == marker and r[9] == "MHK"}
+        mgit = {r[3] for r in rows if r[0] == gene and r[1] == marker and r[9] == "MGIT"}
         print(f"  {gene} {marker}: {len(called)} MUT samples; {len(kept)} with a MIC "
               f"(MHK {len(mhk)}, MGIT {len(mgit)}), {len(str_)} with a MIC for the predicted drug")
         dropped = sorted(called - kept)

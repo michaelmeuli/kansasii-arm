@@ -25,6 +25,11 @@ gene was extracted with >= --min-ident % BLAST identity and >= --min-cov coverag
 reference gene. Otherwise the `qc` column says why, `differs` is NOCALL and aa_call is empty.
 marker_calls.pass.tsv holds only the rows with qc == ok.
 
+`discriminating` is "no" when the reference strain carries the marker's mutant allele
+(ref_aa_check == mut; e.g. rpsL K43R, rrs A514C: ATCC 12478 has the "mutant" residue), so an
+aa_call of MUT only means "same as the reference" and is not evidence of resistance; "yes" when the
+reference carries the wild-type allele; empty when the reference check is unavailable/suspect.
+
 Usage:
   python3 05_annotate.py            # defaults: $KANSASII_ROOT/output/arm/{refs,work}
   python3 05_annotate.py --aln-dir DIR --refs DIR --markers markers.tsv \
@@ -252,7 +257,7 @@ def main() -> None:
                   "ext_position", "mkn_position", "aln_column",
                   "ref_state", "sample", "sample_state", "differs",
                   "ref_aa", "sample_aa", "marker_wt_aa", "marker_mut_aa",
-                  "ref_aa_check", "aa_call", "species", "contamination_flag", "hit_pident",
+                  "ref_aa_check", "aa_call", "discriminating", "species", "contamination_flag", "hit_pident",
                   "hit_cov", "qc", "mixed", "doi"]
         cw.writerow(header)
         pw.writerow(header)
@@ -387,9 +392,13 @@ def main() -> None:
                         mixed_cache[sid] = load_mixed(args.samples, sid)
                     mixed = ";".join(f"{pos}:{r}>{a}@{fr:.2f}" for pos, (r, a, fr)
                                      in sorted(mixed_cache[sid].items()) if g_a <= pos <= g_b)
+                    # the reference strain carries the marker's mutant allele: MUT is then the
+                    # reference/species baseline, so the marker cannot be read as resistance
+                    discriminating = {"wt": "yes", "mut": "no"}.get(ref_check, "")
                     out_row = [tag, m["drug"], m["marker"], m["evidence"], nref,
                                pos, mkn_lo, c_lo + 1, ref_state, sname, s_state,
                                differs, ref_aa, s_aa, wt_aa, mut_aa, ref_check, aa_call,
+                               discriminating,
                                species, contam, f"{hit[0]:.2f}" if hit else "",
                                f"{hit[1]:.3f}" if hit else "", qc, mixed, m["doi"]]
                     cw.writerow(out_row)
