@@ -136,6 +136,17 @@ sbatch --wrap '...; ./run_arm_bam.sh finish'  # after the array: 04_align + 05_a
 - Limits: reads are mapped to the ATCC 12478 reference, so divergent complex species map worse and
   non-complex species mostly do not map; the consensus carries SNPs and small indels only.
 
+## Predicted resistance vs MIC
+
+`08_mut_with_mic.py` keeps the `aa_call = MUT` (qc ok) rows of `marker_calls.pass.tsv` and joins
+them by sample id to the parsed MHK (`output/mic/mhk/mic_parsed.csv`) and MGIT
+(`output/mic/mgit/mgit_parsed.csv`) tables. Output `mut_with_mic.tsv` (next to `marker_calls.tsv`)
+has one row per marker call x MIC row; `mic_matches_drug = 1` marks the MIC of the drug the
+marker predicts. Samples without any MIC are dropped (listed in the printed summary). The MGIT
+panel has no streptomycin, so for the streptomycin markers only MHK rows can match. Both
+streptomycin markers are reference-polarity alleles (the ATCC 12478 reference carries the mutant
+residue/base), so `MUT` means "same as the reference", which is why rrs A514C is `MUT` in every sample.
+
 ## Coordinate transfer — the thing to understand
 
 Almost nothing in `markers.tsv` is in *M. kansasii* coordinates:
